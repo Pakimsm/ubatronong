@@ -1,19 +1,30 @@
 import asyncio
 import re
+import tempfile
+from pathlib import Path
+
 from src.pages.base import BasePage
 from src.models.upload_payload import UploadPayload
-from src.tasks._base import _BASE
+from src.constants import BASE_URL as _BASE
+from src.core.logger import setup_logger
+
+logger = setup_logger("publish")
+
+# Folder artefak debug (screenshot/html/cover) — portabel, bukan path hardcoded.
+_ARTIFACTS = Path(tempfile.gettempdir()) / "soundonbot"
+_ARTIFACTS.mkdir(parents=True, exist_ok=True)
+
 
 class LaguPublishPage(BasePage):
     async def fill_modal_role_profile(self, parent_id: str, name: str):
         try:
-            print(f"Filling {parent_id} inside modal with name: {name}...")
+            logger.info(f"Filling {parent_id} inside modal with name: {name}...")
             # Click tambah button
-            await self.page._page.locator(f"#{parent_id} button").filter(has_text=None or "tambah" or "add").first.click()
+            await self.page.locator(f"#{parent_id} button").filter(has_text=None or "tambah" or "add").first.click()
             await asyncio.sleep(2)
             
             # Wait for modal dialog - use the legacy show class which is unique to the open dialog
-            dialog_loc = self.page._page.locator(".so-form-modal-dialog-legacy-show")
+            dialog_loc = self.page.locator(".so-form-modal-dialog-legacy-show")
             await dialog_loc.wait_for(state="visible", timeout=10000)
             
             # Click the select wrapper for artistProfile inside the dialog
@@ -22,7 +33,7 @@ class LaguPublishPage(BasePage):
             await asyncio.sleep(1.5)
             
             # Fill/type the name into the input element using JS setter to guarantee event binding
-            await self.page._page.evaluate('''(name) => {
+            await self.page.evaluate('''(name) => {
                 const dialog = document.querySelector(".so-form-modal-dialog-legacy-show");
                 const select = dialog.querySelector("#artistProfile");
                 const input = select.querySelector("input");
@@ -37,7 +48,7 @@ class LaguPublishPage(BasePage):
             await asyncio.sleep(2)
             
             # Click option in visible portal using dispatched MouseEvents (mousedown, mouseup, click)
-            await self.page._page.evaluate('''(name) => {
+            await self.page.evaluate('''(name) => {
                 const options = [...document.querySelectorAll(`[artistname="${name}"], [inputvalue="${name}"], [class*="target-option"]`)];
                 const visibleOpt = options.find(el => el.getBoundingClientRect().height > 0);
                 if (visibleOpt) {
@@ -61,21 +72,21 @@ class LaguPublishPage(BasePage):
             await submit_btn.click()
             await asyncio.sleep(3)
         except Exception as e:
-            print(f"DEBUG: Failed filling {parent_id}: {e}")
+            logger.debug(f"Failed filling {parent_id}: {e}")
 
     async def fill_modal_contributor_or_production(self, parent_id: str, name: str, role_keyword: str):
         try:
-            print(f"Checking/Filling {parent_id} with name '{name}' and role '{role_keyword}'...")
-            div_loc = self.page._page.locator(f"#{parent_id}")
+            logger.info(f"Checking/Filling {parent_id} with name '{name}' and role '{role_keyword}'...")
+            div_loc = self.page.locator(f"#{parent_id}")
             div_text = await div_loc.inner_text()
             if name.lower() in div_text.lower():
-                print(f"Value '{name}' is already present in {parent_id}. Skipping.")
+                logger.info(f"Value '{name}' is already present in {parent_id}. Skipping.")
                 return
                 
-            await self.page._page.locator(f"#{parent_id} button").filter(has_text=None or "tambah" or "add").first.click()
+            await self.page.locator(f"#{parent_id} button").filter(has_text=None or "tambah" or "add").first.click()
             await asyncio.sleep(2)
             
-            dialog_loc = self.page._page.locator(".so-form-modal-dialog-legacy-show")
+            dialog_loc = self.page.locator(".so-form-modal-dialog-legacy-show")
             await dialog_loc.wait_for(state="visible", timeout=10000)
             
             # 1. Fill Artist Profile
@@ -83,7 +94,7 @@ class LaguPublishPage(BasePage):
             await select_loc.click()
             await asyncio.sleep(1.5)
             
-            await self.page._page.evaluate('''(name) => {
+            await self.page.evaluate('''(name) => {
                 const dialog = document.querySelector(".so-form-modal-dialog-legacy-show");
                 const select = dialog.querySelector("#artistProfile");
                 const input = select.querySelector("input");
@@ -97,7 +108,7 @@ class LaguPublishPage(BasePage):
             }''', name)
             await asyncio.sleep(2)
             
-            await self.page._page.evaluate('''(name) => {
+            await self.page.evaluate('''(name) => {
                 const options = [...document.querySelectorAll(`[artistname="${name}"], [inputvalue="${name}"], [class*="target-option"]`)];
                 const visibleOpt = options.find(el => el.getBoundingClientRect().height > 0);
                 if (visibleOpt) {
@@ -109,7 +120,7 @@ class LaguPublishPage(BasePage):
             await asyncio.sleep(1.5)
             
             # 2. Fill Role
-            await self.page._page.evaluate('''() => {
+            await self.page.evaluate('''() => {
                 const dialog = document.querySelector(".so-form-modal-dialog-legacy-show");
                 const selects = [...dialog.querySelectorAll(".semi-select")];
                 const roleSelect = selects.find(s => s.id !== "artistProfile");
@@ -117,7 +128,7 @@ class LaguPublishPage(BasePage):
             }''')
             await asyncio.sleep(1.5)
             
-            await self.page._page.evaluate('''(role) => {
+            await self.page.evaluate('''(role) => {
                 const opts = [...document.querySelectorAll(".semi-select-option")];
                 const match = opts.find(o => o.innerText && o.innerText.toLowerCase().includes(role.toLowerCase()) && o.getBoundingClientRect().height > 0);
                 if (match) {
@@ -133,12 +144,12 @@ class LaguPublishPage(BasePage):
             await submit_btn.click()
             await asyncio.sleep(3)
         except Exception as e:
-            print(f"DEBUG: Failed filling contributor/production {parent_id}: {e}")
+            logger.debug(f"Failed filling contributor/production {parent_id}: {e}")
 
     async def fill_select_field(self, label_text: str, search_keyword: str) -> None:
         try:
-            print(f"Filling select field '{label_text}' with keyword '{search_keyword}'...")
-            await self.page._page.evaluate('''([lbl]) => {
+            logger.info(f"Filling select field '{label_text}' with keyword '{search_keyword}'...")
+            await self.page.evaluate('''([lbl]) => {
                 const divs = [...document.querySelectorAll("div")];
                 const field = divs.find(d => d.innerText && d.innerText.includes(lbl) && d.querySelector(".semi-select"));
                 if (field) {
@@ -148,7 +159,7 @@ class LaguPublishPage(BasePage):
             }''', [label_text])
             await asyncio.sleep(1.5)
             
-            await self.page._page.evaluate('''([kw]) => {
+            await self.page.evaluate('''([kw]) => {
                 const options = [...document.querySelectorAll(".semi-select-option, [role='option'], [class*='option']")];
                 const match = options.find(o => o.innerText && o.innerText.toLowerCase().includes(kw.toLowerCase()) && o.getBoundingClientRect().height > 0);
                 if (match) {
@@ -159,7 +170,7 @@ class LaguPublishPage(BasePage):
             }''', [search_keyword])
             await asyncio.sleep(1.5)
         except Exception as e:
-            print(f"DEBUG: Failed to fill select field '{label_text}': {e}")
+            logger.debug(f"Failed to fill select field '{label_text}': {e}")
 
     async def go_to_single_publish(self):
         await self.navigate(f"{_BASE}/library/publish/single?lang=id&region=ID")
@@ -173,7 +184,7 @@ class LaguPublishPage(BasePage):
             try:
                 start_new_sel = "button:has-text('Mulai rilis baru'), button:has-text('Start new release')"
                 if await self.is_visible(start_new_sel):
-                    print("Clicking Start New Release...")
+                    logger.info("Clicking Start New Release...")
                     await self.click(start_new_sel, timeout=3000)
                     await asyncio.sleep(3)
             except:
@@ -181,7 +192,7 @@ class LaguPublishPage(BasePage):
 
         if await self.is_visible("text=Single Song") or await self.is_visible("text=Choose your release type") or await self.is_visible("text=Lagu Tunggal"):
             try:
-                await self.page._page.locator("div.card-y6wAye").filter(has_text=re.compile(r"Single Song|Lagu Tunggal", re.IGNORECASE)).first.click(force=True)
+                await self.page.locator("div.card-y6wAye").filter(has_text=re.compile(r"Single Song|Lagu Tunggal", re.IGNORECASE)).first.click(force=True)
                 await asyncio.sleep(3)
             except:
                 pass
@@ -190,12 +201,12 @@ class LaguPublishPage(BasePage):
         await self.dismiss_popups()
                 
         try:
-            await self.page._page.wait_for_selector("input[type='file'][accept*='.mp3']", state="attached", timeout=15000)
+            await self.page.wait_for_selector("input[type='file'][accept*='.mp3']", state="attached", timeout=15000)
         except Exception:
-            html = await self.page._page.content()
-            with open("/home/aaa/soundonbot/debug_track_fail.html", "w", encoding="utf-8") as f:
-                f.write(html)
-            raise Exception("Failed to reach Track Information step. Page might be loading too slow or ad blocker issue. Check debug_track_fail.html")
+            html = await self.page.content()
+            fail_path = _ARTIFACTS / "debug_track_fail.html"
+            fail_path.write_text(html, encoding="utf-8")
+            raise Exception(f"Failed to reach Track Information step. Page might be loading too slow or ad blocker issue. Check {fail_path}")
         
     async def fill_track_information(self, payload: UploadPayload):
         await self.dismiss_popups()
@@ -204,15 +215,15 @@ class LaguPublishPage(BasePage):
         
         # Wait for audio upload to finish (when 'Upload complete' is visible) BEFORE filling the form
         try:
-            await self.page._page.wait_for_selector("text='Upload complete'", state="visible", timeout=1800000)
+            await self.page.wait_for_selector("text='Upload complete'", state="visible", timeout=1800000)
             await asyncio.sleep(2)
         except Exception as e:
-            print(f"DEBUG: Audio upload wait failed: {e}")
+            logger.debug(f"Audio upload wait failed: {e}")
 
         await self.dismiss_popups()
         
         try:
-            input_selector = await self.page._page.evaluate('''() => {
+            input_selector = await self.page.evaluate('''() => {
                 const labels = [...document.querySelectorAll('label, span, div')];
                 const judulLabel = labels.find(l => l.innerText && (l.innerText.trim() === 'Judul' || l.innerText.toLowerCase().includes('release title') || l.innerText.toLowerCase().includes('track title')));
                 if (judulLabel) {
@@ -228,7 +239,7 @@ class LaguPublishPage(BasePage):
                 }
                 return 'input[type="text"]'; // fallback
             }''')
-            title_input = self.page._page.locator(input_selector).first
+            title_input = self.page.locator(input_selector).first
             await title_input.click(force=True)
             await title_input.fill("")
             await title_input.type(payload.title, delay=50)
@@ -240,20 +251,20 @@ class LaguPublishPage(BasePage):
         try:
             await self.fill_select_field("Bahasa judul", "indonesia")
         except Exception as e:
-            print(f"DEBUG: Failed Bahasa judul: {e}")
+            logger.debug(f"Failed Bahasa judul: {e}")
         await asyncio.sleep(1)
 
         # Instrumental
         try:
             await self.click_radio_option("Instrumental", "Tidak")
         except Exception as e:
-            print(f"DEBUG: Failed Instrumental: {e}")
+            logger.debug(f"Failed Instrumental: {e}")
         await asyncio.sleep(1)
 
         # Primary Artist (mainArtists)
         try:
-            print("Clicking tambah button for mainArtists...")
-            await self.page._page.evaluate('''() => {
+            logger.info("Clicking tambah button for mainArtists...")
+            await self.page.evaluate('''() => {
                 const mainArtistsDiv = document.getElementById("mainArtists");
                 if (mainArtistsDiv) {
                     const btn = mainArtistsDiv.querySelector("button");
@@ -262,12 +273,12 @@ class LaguPublishPage(BasePage):
             }''')
             await asyncio.sleep(2)
 
-            print("Opening #artistProfile select...")
+            logger.info("Opening #artistProfile select...")
             await self.page.click("#artistProfile")
             await asyncio.sleep(1)
 
-            print(f"Typing '{payload.artist}' into #artistProfile input...")
-            await self.page._page.evaluate('''(name) => {
+            logger.info(f"Typing '{payload.artist}' into #artistProfile input...")
+            await self.page.evaluate('''(name) => {
                 const container = document.getElementById("artistProfile");
                 if (!container) return;
                 const input = container.querySelector("input");
@@ -281,8 +292,8 @@ class LaguPublishPage(BasePage):
             }''', payload.artist)
             await asyncio.sleep(2)
 
-            print("Selecting the matching option...")
-            await self.page._page.evaluate('''(name) => {
+            logger.info("Selecting the matching option...")
+            await self.page.evaluate('''(name) => {
                 const options = [...document.querySelectorAll("[class*='target-option']")];
                 const match = options.find(o => o.getAttribute("artistname")?.toLowerCase() === name.toLowerCase());
                 const opt = match || options[0];
@@ -290,8 +301,8 @@ class LaguPublishPage(BasePage):
             }''', payload.artist)
             await asyncio.sleep(1)
 
-            print("Submitting the modal...")
-            await self.page._page.evaluate('''() => {
+            logger.info("Submitting the modal...")
+            await self.page.evaluate('''() => {
                 const modal = document.querySelector(".so-form-modal");
                 if (!modal) return;
                 const buttons = [...modal.querySelectorAll("button")];
@@ -300,20 +311,20 @@ class LaguPublishPage(BasePage):
             }''')
             await asyncio.sleep(2)
         except Exception as e:
-            print(f"DEBUG: Failed to select primary artist: {e}")
+            logger.debug(f"Failed to select primary artist: {e}")
 
         # Contributor Vokalis
         try:
             await self.fill_modal_contributor_or_production("contributors", payload.artist, "vokalis")
         except Exception as e:
-            print(f"DEBUG: Failed Contributor: {e}")
+            logger.debug(f"Failed Contributor: {e}")
         await asyncio.sleep(1)
 
         # Production Role Produser
         try:
             await self.fill_modal_contributor_or_production("productionAndEngineering", payload.artist, "produser")
         except Exception as e:
-            print(f"DEBUG: Failed Production Role: {e}")
+            logger.debug(f"Failed Production Role: {e}")
         await asyncio.sleep(1)
 
         # Fill Songwriter (Penulis lagu)
@@ -328,11 +339,11 @@ class LaguPublishPage(BasePage):
         try:
             await self.click_radio_option("berlisensi", "Tidak")
         except Exception as e:
-            print(f"DEBUG: Failed Konten Berlisensi: {e}")
+            logger.debug(f"Failed Konten Berlisensi: {e}")
         await asyncio.sleep(1)
 
         # Genre
-        await self.page._page.evaluate('''() => {
+        await self.page.evaluate('''() => {
             const select = document.querySelector("#mainGenre .semi-select");
             if(select) select.click();
             else {
@@ -343,7 +354,7 @@ class LaguPublishPage(BasePage):
             }
         }''')
         await asyncio.sleep(2)
-        await self.page._page.evaluate('''(genre) => {
+        await self.page.evaluate('''(genre) => {
             const opts = [...document.querySelectorAll("[role='listbox'] .semi-select-option-text, [role='listbox'] li")];
             const match = opts.find(el => el.innerText.trim().toLowerCase() === genre.toLowerCase() && el.getBoundingClientRect().width > 0);
             if (match) match.closest("[role='option'], li").click();
@@ -358,26 +369,26 @@ class LaguPublishPage(BasePage):
         try:
             await self.fill_select_field("Bahasa lirik", "indonesia")
         except Exception as e:
-            print(f"DEBUG: Failed Bahasa lirik: {e}")
+            logger.debug(f"Failed Bahasa lirik: {e}")
         await asyncio.sleep(1)
 
         # Fill Explicit (Eksplisit)
         try:
             await self.click_radio_option("Eksplisit", "Tidak")
         except Exception as e:
-            print(f"DEBUG: Failed Explicit: {e}")
+            logger.debug(f"Failed Explicit: {e}")
         await asyncio.sleep(1)
 
         # Already released (Sudah pernah dirilis?)
         try:
             await self.click_radio_option("pernah dirilis", "Tidak")
         except Exception as e:
-            print(f"DEBUG: Failed Pernah Dirilis: {e}")
+            logger.debug(f"Failed Pernah Dirilis: {e}")
         await asyncio.sleep(1)
 
-        await self.page._page.screenshot(path="/home/aaa/soundonbot/debug_before_cover.png", full_page=True)
+        await self.page.screenshot(path=str(_ARTIFACTS / "debug_before_cover.png"), full_page=True)
         try:
-            cover_path = "/home/aaa/soundonbot/generated_cover.jpg"
+            cover_path = str(_ARTIFACTS / "generated_cover.jpg")
             # Generate a solid color cover with PIL
             from PIL import Image, ImageDraw, ImageFont
             img = Image.new('RGB', (3000, 3000), color = (73, 109, 137))
@@ -391,19 +402,19 @@ class LaguPublishPage(BasePage):
             d.text((1500, 1800), payload.artist, font=fnt, fill=(255, 255, 255), anchor="mm")
             img.save(cover_path)
             
-            print("Waiting for cover upload input...")
+            logger.info("Waiting for cover upload input...")
             image_selector = "input[type='file'][accept*='.jpg'], input[type='file'][accept*='.jpeg'], input[type='file'][accept*='.png']"
-            await self.page._page.wait_for_selector(image_selector, state="attached", timeout=30000)
+            await self.page.wait_for_selector(image_selector, state="attached", timeout=30000)
             
-            print("Uploading cover image...")
+            logger.info("Uploading cover image...")
             await self.page.set_input_files(image_selector, cover_path)
             # Wait for upload to complete
             await asyncio.sleep(10)
         except Exception as e:
-            print(f"DEBUG: Cover upload failed: {e}")
+            logger.debug(f"Cover upload failed: {e}")
             
 
-        await self.page._page.evaluate('''() => {
+        await self.page.evaluate('''() => {
             const btns = [...document.querySelectorAll('button, div, span, a')];
             const btn = btns.find(b => b.innerText && (b.innerText.trim() === 'Next' || b.innerText.trim() === 'Selanjutnya') && b.getBoundingClientRect().width > 0);
             if (btn) btn.click();
@@ -413,13 +424,13 @@ class LaguPublishPage(BasePage):
         
     async def fill_release_settings(self, payload: UploadPayload):
         try:
-            print("Selecting 'Lewati untuk sekarang' for TikTok Prerilis...")
+            logger.info("Selecting 'Lewati untuk sekarang' for TikTok Prerilis...")
             await self.click_radio_option("Prarilis TikTok", "Lewati untuk sekarang")
         except Exception as e:
-            print(f"DEBUG: Failed TikTok Prerilis selection: {e}")
+            logger.debug(f"Failed TikTok Prerilis selection: {e}")
         await asyncio.sleep(1)
         
-        await self.page._page.evaluate('''() => {
+        await self.page.evaluate('''() => {
             const btns = [...document.querySelectorAll('button, div, span, a')];
             const btn = btns.find(b => b.innerText && (b.innerText.trim() === 'Next' || b.innerText.trim() === 'Selanjutnya') && b.getBoundingClientRect().width > 0);
             if (btn) btn.click();
@@ -429,13 +440,13 @@ class LaguPublishPage(BasePage):
 
     async def skip_more_options(self):
         try:
-            print("Selecting 100% publishing rights...")
+            logger.info("Selecting 100% publishing rights...")
             await self.click_radio_option("Hak penerbitan", "100%")
         except Exception as e:
-            print(f"DEBUG: Error handling publishing rights: {e}")
+            logger.debug(f"Error handling publishing rights: {e}")
         await asyncio.sleep(1.5)
 
-        await self.page._page.evaluate('''() => {
+        await self.page.evaluate('''() => {
             const btns = [...document.querySelectorAll('button, div, span, a')];
             const btn = btns.find(b => b.innerText && (b.innerText.trim() === 'Next' || b.innerText.trim() === 'Selanjutnya') && b.getBoundingClientRect().width > 0);
             if (btn) btn.click();
@@ -445,7 +456,7 @@ class LaguPublishPage(BasePage):
         
     async def dismiss_validation_modal(self) -> bool:
         try:
-            dismissed = await self.page._page.evaluate('''() => {
+            dismissed = await self.page.evaluate('''() => {
                 const modal = document.querySelector('.semi-modal');
                 if (modal && modal.innerText && (modal.innerText.includes('kesalahan terdeteksi') || modal.innerText.includes('errors detected'))) {
                     const btns = [...modal.querySelectorAll('button, span, div')];
@@ -458,17 +469,17 @@ class LaguPublishPage(BasePage):
                 return false;
             }''')
             if dismissed:
-                print("Dismissed validation modal (clicked Nanti).")
+                logger.info("Dismissed validation modal (clicked Nanti).")
                 await asyncio.sleep(1.5)
                 return True
         except Exception as e:
-            print(f"DEBUG: Error dismissing validation modal: {e}")
+            logger.debug(f"Error dismissing validation modal: {e}")
         return False
 
     async def submit(self) -> bool:
         await self.dismiss_validation_modal()
         # Submit to draft
-        await self.page._page.evaluate('''() => {
+        await self.page.evaluate('''() => {
             const btns = [...document.querySelectorAll('button, .semi-button, [role="button"]')];
             const btn = btns.find(b => (b.innerText.toLowerCase().includes('simpan ke draf') || b.innerText.toLowerCase().includes('save to draft')) && b.getBoundingClientRect().width > 0);
             if (btn) btn.click();
@@ -478,7 +489,7 @@ class LaguPublishPage(BasePage):
         await self.dismiss_validation_modal()
         
         try:
-            await self.page._page.wait_for_url("**/list?type=drafts*", timeout=15000)
+            await self.page.wait_for_url("**/list?type=drafts*", timeout=15000)
             await asyncio.sleep(2)
         except Exception:
             await asyncio.sleep(5)

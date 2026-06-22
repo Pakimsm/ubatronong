@@ -3,7 +3,6 @@ from src.models.account import Account
 from src.models.task_result import TaskResult
 from src.models.upload_payload import UploadPayload
 from src.tasks._base import SoundOnTask
-from src.pages.login import LoginPage
 from src.pages.album_publish import AlbumPublishPage
 
 class UploadAlbumTask(SoundOnTask[TaskResult]):
@@ -14,8 +13,7 @@ class UploadAlbumTask(SoundOnTask[TaskResult]):
 
     async def execute(self, page: IPage, account: Account, draft_url: str = None) -> TaskResult:
         try:
-            login_page = LoginPage(page)
-            if not await login_page.login(account.email, account.password):
+            if not await self._login(page, account):
                 return TaskResult(success=False, message="Login gagal")
 
             publish_page = AlbumPublishPage(page)

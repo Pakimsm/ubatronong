@@ -1,13 +1,8 @@
-from .browser import PlaywrightBrowser
-from .account_manager import JsonAccountRepository
-from .runner import AppRunner
-from .logger import setup_logger
-from .scheduler import Scheduler
+"""Paket core (browser, runner, repo, logger, scheduler).
 
-__all__ = [
-    "PlaywrightBrowser",
-    "JsonAccountRepository",
-    "AppRunner",
-    "setup_logger",
-    "Scheduler",
-]
+Sengaja TANPA eager-import. Sebelumnya `from .browser import PlaywrightBrowser`
+membuat impor ringan seperti `from src.core.logger import setup_logger` ikut
+menyeret Playwright. Konsumen meng-import submodul langsung, mis.:
+    from src.core.browser import PlaywrightBrowser
+    from src.core.logger import setup_logger
+"""

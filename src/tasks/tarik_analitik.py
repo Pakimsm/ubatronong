@@ -2,7 +2,6 @@ from src.interfaces.browser import IPage
 from src.models.account import Account
 from src.models.task_result import TaskResult
 from src.tasks._base import SoundOnTask
-from src.pages.login import LoginPage
 from src.pages.analytics import AnalyticsPage
 
 class TarikAnalitikTask(SoundOnTask[TaskResult]):
@@ -10,8 +9,7 @@ class TarikAnalitikTask(SoundOnTask[TaskResult]):
 
     async def execute(self, page: IPage, account: Account) -> TaskResult:
         try:
-            login_page = LoginPage(page)
-            if not await login_page.login(account.email, account.password):
+            if not await self._login(page, account):
                 return TaskResult(success=False, message="Login gagal")
 
             analytics_page = AnalyticsPage(page)

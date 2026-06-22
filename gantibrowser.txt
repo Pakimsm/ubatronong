@@ -1,0 +1,198 @@
+================================================================================
+ REPORT: PENAMBAHAN BACKEND DOLPHIN ANTY (Ganti Browser)
+ Project : Sound(bot)On CLI (ubatronong)
+ Tanggal : 2026-06-22
+================================================================================
+
+TUJUAN
+--------------------------------------------------------------------------------
+Memindahkan otomasi dari Playwright-Chromium "biasa" ke Dolphin Anty (anti-detect
+browser) agar fingerprint + proxy ditangani per-profil oleh Dolphin, sehingga
+lebih sulit terdeteksi sebagai bot. Tiap akun = satu profil Dolphin.
+
+Kunci desain: karena project sudah punya interface IBrowser (prinsip DIP), backend
+baru cukup jadi IMPLEMENTASI BARU. Logika task/page/runner TIDAK diubah.
+
+
+KENAPA DOLPHIN (vs init-script stealth manual)
+--------------------------------------------------------------------------------
+- Dolphin spoof fingerprint di level browser asli: canvas, WebGL, fonts, WebRTC,
+  hardware, dll. Jauh lebih kuat dari sekadar menambal navigator.webdriver.
+- 1 profil = 1 akun = 1 fingerprint + 1 proxy. Cocok untuk fitur multi-akun.
+- Playwright tidak me-launch browser sendiri; Dolphin yang membuka browser, lalu
+  Playwright menempel via CDP (Chrome DevTools Protocol) -> connect_over_cdp.
+
+
+FILE YANG DIUBAH / DITAMBAH
+--------------------------------------------------------------------------------
+[BARU]   src/core/dolphin_browser.py
+         - Class DolphinBrowser(IBrowser) dan DolphinPage(PlaywrightPage).
+         - launch()    : start Playwright (TIDAK launch Chromium).
+         - new_page(account):
+              1. Resolusi account.dolphin_profile_id (wajib ada).
+              2. GET {api}/browser_profiles/{id}/start?automation=1
+                 -> dapat {port, wsEndpoint}.
+              3. connect_over_cdp("ws://127.0.0.1:{port}{wsEndpoint}").
+              4. Pakai context profil yg sudah ada (umumnya sudah login).
+              5. Kembalikan DolphinPage; saat page.close() -> profil di-stop.
+         - close()     : stop semua profil sisa + stop Playwright.
+         - Guard error jelas kalau akun belum punya dolphin_profile_id.
+         - Reuse PlaywrightPage dari core/browser.py (DRY).
+
+[UBAH]   src/models/account.py
+         - Tambah field: dolphin_profile_id: Optional[str] = None
+         - (Tetap frozen dataclass.)
+
+[UBAH]   src/core/account_manager.py
+         - get_all(): baca "dolphin_profile_id" dari JSON.
+         - save()   : tulis "dolphin_profile_id" ke JSON.
+
+[UBAH]   src/interfaces/browser.py
+         - IBrowser.new_page(account: Optional[Account] = None)
+           Backend yang mengikat page ke identitas (Dolphin) memakai account;
+           backend lain boleh mengabaikannya.
+
+[UBAH]   src/core/browser.py
+         - PlaywrightBrowser.new_page(account=None) -> account diabaikan
+           (tetap kompatibel, tidak breaking).
+
+[UBAH]   src/core/runner.py
+         - Meneruskan account ke new_page(account).
+
+[UBAH]   main.py
+         - build_browser(config): pilih backend via env BROWSER_BACKEND
+           ("dolphin" default | "playwright").
+         - load_dotenv() untuk baca .env.
+         - Import backend secara lazy.
+
+[UBAH]   src/cli/app.py
+         - Menu "Tambah Akun": tanya "ID Profil Dolphin Anty" (boleh kosong).
+         - ID akun baru = max(id)+1 (hindari tabrakan int(time.time())).
+         - "Tampilkan List Akun": tampilkan kolom Profil Dolphin.
+         - Hapus "import time" yang tidak terpakai lagi.
+
+[BARU]   .env.example
+         - BROWSER_BACKEND, DOLPHIN_API_BASE, DOLPHIN_API_TOKEN.
+
+
+KONFIGURASI (.env)
+--------------------------------------------------------------------------------
+BROWSER_BACKEND=dolphin
+DOLPHIN_API_BASE=http://localhost:3001/v1.0
+DOLPHIN_API_TOKEN=            # isi hanya jika Local API minta Authorization Bearer
+
+Catatan: file .env sudah ter-ignore di .gitignore (baris ".env").
+
+
+CARA PAKAI
+--------------------------------------------------------------------------------
+1. Buka aplikasi Dolphin Anty, pastikan Local API aktif (default port 3001).
+2. cp .env.example .env   (default sudah dolphin).
+3. pip install -r requirements.txt
+   -> "playwright install chromium" TIDAK diperlukan untuk mode Dolphin,
+      karena browser disediakan Dolphin. Cukup paket pip "playwright" untuk CDP.
+4. python main.py
+5. Menu "Tambah Akun": isi email/password + ID Profil Dolphin (ambil dari Dolphin).
+6. Jalankan task seperti biasa.
+
+
+DAMPAK KE PERILAKU LAMA
+--------------------------------------------------------------------------------
+- Init-script stealth manual + context locale/timezone (yang ditambahkan di
+  PlaywrightBrowser sebelumnya) TIDAK terpakai saat mode Dolphin; tetap aktif
+  sebagai fallback bila BROWSER_BACKEND=playwright.
+- Login email/password menjadi FALLBACK: bila profil Dolphin sudah login,
+  perbaikan login (#2) mendeteksi avatar/menu user -> langsung lanjut tanpa
+  mengisi ulang kredensial.
+- Mapping akun<->page berubah: di Dolphin 1 profil = 1 akun (bukan 1 context
+  per akun seperti di PlaywrightBrowser).
+
+
+VERIFIKASI YANG SUDAH DILAKUKAN
+--------------------------------------------------------------------------------
+- py_compile semua file berubah: OK.
+- Round-trip repo: dolphin_profile_id tersimpan & terbaca dari JSON: OK.
+  (akun dengan profil -> "prof-123"; tanpa profil -> None)
+- Guard DolphinBrowser: akun tanpa dolphin_profile_id -> RuntimeError jelas: OK.
+- Catatan: import penuh butuh paket "playwright" terpasang (mode Dolphin pun
+  memakai playwright untuk connect_over_cdp).
+
+
+CATATAN TEKNIS / RISIKO
+--------------------------------------------------------------------------------
+- src/core/__init__.py meng-import PlaywrightBrowser secara eager, jadi paket
+  "playwright" tetap wajib terpasang walau pakai Dolphin (Dolphin pun butuh
+  playwright untuk CDP) -> bukan masalah fungsional.
+- Local API Dolphin sebagian versi meminta token Authorization Bearer; sudah
+  didukung lewat DOLPHIN_API_TOKEN.
+- Cleanup profil bersifat best-effort (error stop diabaikan agar alur tidak
+  gagal hanya karena stop gagal).
+
+================================================================================
+ HASIL SMOKE TEST (dijalankan di Chromium asli, headless)
+================================================================================
+
+Lingkungan uji: venv (.venv) berisi playwright + rich + aiohttp + questionary,
+plus chromium (playwright install). Server tanpa display -> headless=True.
+Dolphin TIDAK diuji di sini (butuh app desktop + akun/profil asli + display);
+hanya bisa dijalankan di mesin user.
+
+--- Test 1: Browser layer (PlaywrightBrowser + IPage) -> 9/9 LULUS ------------
+  [stealth] navigator.webdriver = undefined        OK
+  [stealth] navigator.languages = [id-ID, id, en-US] OK
+  [stealth] window.chrome ada, navigator.plugins = 5 OK
+  [stealth] WebGL vendor ter-spoof = "Intel Inc."  OK
+  [type_human] ketik manusiawi + React events      OK
+  [dispatch_select_option] dropdown Semi UI         OK
+  [locator] escape-hatch via kontrak IPage          OK
+  [content] + [screenshot]                          OK
+  [context] viewport 1366x768                        OK
+
+--- Test 2: Orkestrasi AppRunner + repo asli -> LULUS ------------------------
+  3 akun (sukses / gagal / error) -> status tersimpan:
+    {1: "Berhasil Login", 2: "Gagal Login", 3: "Error Sistem"}
+  Membuktikan fix #1 (Account frozen) end-to-end: status tersimpan, TIDAK crash,
+  termasuk jalur "Error Sistem" yang dulu fatal (mutasi frozen di blok except).
+
+--- BUG BARU yang DITEMUKAN smoke test (lalu diperbaiki) --------------------
+  _STEALTH_INIT_JS semula ditulis sebagai arrow function `() => {...}` yang TIDAK
+  pernah dipanggil. Playwright add_init_script meng-evaluate string apa adanya,
+  jadi fungsi hanya didefinisikan lalu dibuang -> SELURUH stealth jadi no-op.
+  Test pertama gagal (webdriver=False, chrome=False, plugins=0).
+  Fix: ubah ke IIFE `(() => {...})();`. Test ulang -> 9/9 lulus.
+  (Tanpa run nyata, bug ini akan lolos diam-diam ke produksi.)
+
+
+================================================================================
+ FOLLOW-UP YANG SUDAH DIKERJAKAN (setelah report awal)
+================================================================================
+
+[#3 TUNTAS] Migrasi src/pages/lagu_publish.py & album_publish.py:
+  - Hapus 67 akses self.page._page -> 0 (semua lewat kontrak IPage).
+  - IPage ditambah: content(), wait_for_url(), keyboard_type(), locator(),
+    upload_file(use_last, force); wait_for_selector() dapat param state.
+  - Bug path hardcoded /home/aaa/soundonbot/ (5 titik) -> folder portabel
+    tempfile.gettempdir()/soundonbot/.
+  - print() -> logger (DEBUG->logger.debug, info->logger.info), termasuk base.py.
+  - Verifikasi: PlaywrightPage & DolphinPage implementasi IPage LENGKAP.
+
+[CIRCULAR IMPORT _BASE - FIXED]:
+  - Akar: pages meng-import _BASE dari src.tasks._base -> memicu tasks/__init__
+    (eager-import task yg balik import pages) -> circular saat pages di-load duluan.
+  - Fix: konstanta dipindah ke modul netral src/constants.py (BASE_URL).
+    _base.py re-export; 7 file pages repoint ke src.constants.
+  - Verifikasi: import pages-first / tasks-first / cli.app -> semua OK.
+
+[DEKOPLING __init__ - DIRAPIKAN]:
+  - src/tasks/__init__.py & src/core/__init__.py: hapus eager-import.
+  - Efek: import ringan (mis. src.core.logger) tidak lagi menyeret Playwright.
+    Terbukti: python SISTEM tanpa playwright kini bisa import src.pages.*.
+
+================================================================================
+ STATUS AKHIR
+================================================================================
+  Tervalidasi nyata : PlaywrightBrowser/IPage (+method migrasi #3), stealth,
+                      orkestrasi runner (#1), semua jalur import.
+  Belum bisa diuji  : lapisan DolphinBrowser + alur SoundOn asli
+                      (perlu Dolphin desktop + akun/profil + display di mesin user).
+================================================================================

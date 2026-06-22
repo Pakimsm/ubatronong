@@ -1,3 +1,4 @@
+from dataclasses import replace
 from typing import Any, List, Optional
 
 from src.interfaces.account_repo import IAccountRepository
@@ -47,13 +48,14 @@ class AppRunner:
         async with self._browser:
             for idx, account in enumerate(accounts, start=1):
                 self._notifier.progress(idx, total, account.email)
-                page = await self._browser.new_page()
+                page = await self._browser.new_page(account)
                 try:
                     result = await task.execute(page, account)
                     results.append(result)
                     
                     if type(task).__name__ == "TesLoginTask":
-                        account.status = "Berhasil Login" if result.success else "Gagal Login"
+                        new_status = "Berhasil Login" if result.success else "Gagal Login"
+                        account = replace(account, status=new_status)
                         self._account_repo.save(account)
 
                     if result.success:
@@ -70,8 +72,10 @@ class AppRunner:
                 except Exception as exc:
                     self._notifier.error(f"[{account.email}] Error Sistem", exc)
                     if type(task).__name__ == "TesLoginTask":
-                        account.status = "Error Sistem"
-                        self._account_repo.save(account)
+                        try:
+                            self._account_repo.save(replace(account, status="Error Sistem"))
+                        except Exception:
+                            pass
                 finally:
                     await page.close()
 

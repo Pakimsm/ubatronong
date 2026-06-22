@@ -27,7 +27,8 @@ class JsonAccountRepository(IAccountRepository):
             email=item["email"],
             password=item["password"],
             active=item.get("active", True),
-            status=item.get("status", "Baru Ditambahkan")
+            status=item.get("status", "Baru Ditambahkan"),
+            dolphin_profile_id=item.get("dolphin_profile_id"),
         ) for item in self._load()]
 
     def get_active(self) -> List[Account]:
@@ -44,6 +45,7 @@ class JsonAccountRepository(IAccountRepository):
             "password": account.password,
             "active": account.active,
             "status": account.status,
+            "dolphin_profile_id": account.dolphin_profile_id,
         }
         if idx is not None:
             data[idx] = entry

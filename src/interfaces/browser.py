@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional
+from typing import TYPE_CHECKING, Any, List, Optional
+
+if TYPE_CHECKING:
+    from src.models.account import Account
 
 
 class IElement(ABC):
@@ -39,11 +42,31 @@ class IPage(ABC):
 
     @abstractmethod
     async def wait_for_selector(
-        self, selector: str, timeout: float = 5_000
+        self, selector: str, timeout: float = 5_000, state: str = "visible"
     ) -> None: ...
 
     @abstractmethod
     async def wait_for_navigation(self) -> None: ...
+
+    @abstractmethod
+    async def wait_for_url(self, url_pattern: str, timeout: float = 15_000) -> None: ...
+
+    @abstractmethod
+    async def content(self) -> str:
+        """Return the full HTML of the current page."""
+        ...
+
+    @abstractmethod
+    async def keyboard_type(self, text: str) -> None:
+        """Type text via the keyboard into whatever element currently has focus."""
+        ...
+
+    @abstractmethod
+    def locator(self, selector: str) -> Any:
+        """Escape hatch: return the framework locator for advanced chained
+        interactions (filter/nth/force-click). Still part of the IPage contract,
+        so pages never touch the concrete driver object directly."""
+        ...
 
     @abstractmethod
     async def query_selector(self, selector: str) -> Optional[IElement]: ...
@@ -58,8 +81,15 @@ class IPage(ABC):
     async def set_input_files(self, selector: str, path: str) -> None: ...
 
     @abstractmethod
-    async def upload_file(self, trigger_selector: str, file_path: str) -> None:
-        """Click trigger_selector then set file via the file chooser that opens."""
+    async def upload_file(
+        self,
+        trigger_selector: str,
+        file_path: str,
+        use_last: bool = False,
+        force: bool = False,
+    ) -> None:
+        """Click trigger_selector then set file via the file chooser that opens.
+        use_last picks the last match (vs first); force bypasses actionability checks."""
         ...
 
     @abstractmethod
@@ -78,6 +108,17 @@ class IPage(ABC):
     async def type(self, selector: str, text: str, delay: int = 0) -> None: ...
 
     @abstractmethod
+    async def type_human(self, selector: str, text: str) -> None:
+        """Click the field, clear it, type with randomized per-key delay, then
+        dispatch React-friendly input/change events. Human-like + framework-safe."""
+        ...
+
+    @abstractmethod
+    async def dispatch_select_option(self, container_selector: str, index: int, value: str) -> None:
+        """Open the Nth dropdown matching `container_selector` and click the option == value."""
+        ...
+
+    @abstractmethod
     async def close(self) -> None: ...
 
 
@@ -89,7 +130,10 @@ class IBrowser(ABC):
     async def close(self) -> None: ...
 
     @abstractmethod
-    async def new_page(self) -> IPage: ...
+    async def new_page(self, account: Optional["Account"] = None) -> IPage:
+        """Create a page. Implementations that bind a page to a specific identity
+        (e.g. a Dolphin Anty profile) use `account`; others may ignore it."""
+        ...
 
     async def __aenter__(self) -> IBrowser:
         await self.launch()

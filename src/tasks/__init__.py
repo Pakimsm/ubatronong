@@ -1,5 +1,7 @@
-from .tarik_data import TarikDataTask
-from .upload_lagu import UploadLaguTask
-from .tarik_dana import TarikDanaTask
+"""Paket task otomasi SoundOn.
 
-__all__ = ["TarikDataTask", "UploadLaguTask", "TarikDanaTask"]
+Sengaja TIDAK meng-import task apa pun di sini. Eager-import sebelumnya
+(`from .upload_lagu import ...`) memicu rantai pages<->tasks dan rawan circular
+import. Konsumen meng-import submodul langsung, mis.:
+    from src.tasks.tes_login import TesLoginTask
+"""

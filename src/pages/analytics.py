@@ -1,6 +1,6 @@
 import asyncio
 from src.pages.base import BasePage
-from src.tasks._base import _BASE
+from src.constants import BASE_URL as _BASE
 
 class AnalyticsPage(BasePage):
     async def extract_streams(self) -> dict:
