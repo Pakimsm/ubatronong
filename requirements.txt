@@ -1,0 +1,8 @@
+playwright==1.44.0
+PyQt5==5.15.10
+openpyxl==3.1.2
+pandas==2.2.1
+python-dotenv==1.0.1
+aiohttp==3.9.5
+questionary==2.1.1
+rich==15.0.0

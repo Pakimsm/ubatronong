@@ -1,0 +1,15 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.env
+config/accounts.json
+data/output/
+data/logs/
+.DS_Store
+*.png
+*.html
+*.jpg
+*.jpeg
+*.log

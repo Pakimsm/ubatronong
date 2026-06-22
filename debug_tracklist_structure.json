@@ -1,0 +1,150 @@
+{
+  "numDivs_count": 7,
+  "numDivs": [
+    {
+      "text": "2",
+      "parentClass": "so-step-vertical so-step-vertical-status-active",
+      "class": "so-step-vertical-icon"
+    },
+    {
+      "text": "3",
+      "parentClass": "so-step-vertical so-step-vertical-status-coming",
+      "class": "so-step-vertical-icon"
+    },
+    {
+      "text": "4",
+      "parentClass": "so-step-vertical so-step-vertical-status-coming",
+      "class": "so-step-vertical-icon"
+    },
+    {
+      "text": "5",
+      "parentClass": "so-step-vertical so-step-vertical-status-coming",
+      "class": "so-step-vertical-icon"
+    },
+    {
+      "text": "1",
+      "parentClass": "preview-Z6ovek",
+      "class": "index-aoDAnn"
+    },
+    {
+      "text": "1",
+      "parentClass": "preview-Z6ovek",
+      "class": "index-aoDAnn"
+    },
+    {
+      "text": "1",
+      "parentClass": "preview-Z6ovek",
+      "class": "index-aoDAnn"
+    }
+  ],
+  "collapseItems_count": 0,
+  "collapseItems": [],
+  "inputs": [
+    {
+      "id": "soundon-title-input-hack",
+      "type": "text",
+      "placeholder": "",
+      "value": "Fire Stone",
+      "class": "semi-input semi-input-default"
+    },
+    {
+      "id": "",
+      "type": "text",
+      "placeholder": "",
+      "value": "",
+      "class": "semi-input semi-input-default"
+    },
+    {
+      "id": "",
+      "type": "file",
+      "placeholder": "",
+      "value": "",
+      "class": "semi-upload-hidden-input"
+    },
+    {
+      "id": "",
+      "type": "file",
+      "placeholder": "",
+      "value": "",
+      "class": "semi-upload-hidden-input-replace"
+    },
+    {
+      "id": "",
+      "type": "radio",
+      "placeholder": "",
+      "value": "on",
+      "class": ""
+    },
+    {
+      "id": "",
+      "type": "radio",
+      "placeholder": "",
+      "value": "on",
+      "class": ""
+    },
+    {
+      "id": "",
+      "type": "checkbox",
+      "placeholder": "",
+      "value": "on",
+      "class": "semi-checkbox-input"
+    },
+    {
+      "id": "",
+      "type": "file",
+      "placeholder": "",
+      "value": "",
+      "class": "semi-upload-hidden-input"
+    },
+    {
+      "id": "",
+      "type": "file",
+      "placeholder": "",
+      "value": "",
+      "class": "semi-upload-hidden-input-replace"
+    },
+    {
+      "id": "",
+      "type": "checkbox",
+      "placeholder": "",
+      "value": "on",
+      "class": "semi-checkbox-input"
+    },
+    {
+      "id": "",
+      "type": "text",
+      "placeholder": "",
+      "value": "",
+      "class": "semi-input semi-input-default"
+    },
+    {
+      "id": "",
+      "type": "radio",
+      "placeholder": "",
+      "value": "on",
+      "class": ""
+    },
+    {
+      "id": "",
+      "type": "radio",
+      "placeholder": "",
+      "value": "on",
+      "class": ""
+    },
+    {
+      "id": "",
+      "type": "radio",
+      "placeholder": "",
+      "value": "on",
+      "class": ""
+    },
+    {
+      "id": "",
+      "type": "radio",
+      "placeholder": "",
+      "value": "on",
+      "class": ""
+    }
+  ],
+  "pageText": "Ikhtisar\nRilis\nPromosi\nAnalitik & Penghasilan\nVisual\nLainnya\nAdd-on\nUnggah\nInformasi Album\n2\nInformasi lagu\n3\nPengaturan Rilis\n4\nOpsi rilis lainnya\n5\nPeninjauan\nInformasi lagu\nKlik untuk menyusun ulang daftar trek\n1\nFire In The Bed.wav\nUnggah file lagu lengkap\nFire In The Bed.wav\nWaiting\nBuat beberapa suara resmi untuk TikTok\nPangkas online\nTambah file\n2 suara ekstra untuk lagu ini\nAdd-on\nJudul\nBahasa judul\nEnglish\nVersi(Opsional)\nGenre\nPop\nSubgenre(Opsional)\nInstrumental\nYa\nTidak\nArtis utama\n\nK"
+}
