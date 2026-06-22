@@ -1,6 +1,6 @@
 import asyncio
 from src.pages.base import BasePage
-from src.tasks._base import _BASE
+from src.constants import BASE_URL as _BASE
 
 class LoginPage(BasePage):
     async def login(self, email: str, password: str) -> bool:
@@ -17,8 +17,12 @@ class LoginPage(BasePage):
         # Try to find username input safely
         is_username_visible = await self.is_visible("input[name='username'], input[type='email']")
         if not is_username_visible:
-            return True # Probably already logged in but URL didn't match cleanly
-            
+            # Input tidak muncul. JANGAN langsung anggap sukses (timeout/captcha juga
+            # bikin input hilang). Hanya True kalau ada bukti positif kita sudah masuk.
+            return await self.is_visible(
+                "[data-testid='user-avatar'], .semi-navigation, nav[role='navigation']"
+            )
+
         await self.page.fill("input[name='username'], input[type='email']", email)
         await self.page.fill("input[type='password']", password)
         await self.page.click("button:has-text('Log in'), button[type='submit']")

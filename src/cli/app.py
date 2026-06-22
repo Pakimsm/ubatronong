@@ -19,7 +19,6 @@ from src.tasks.tarik_dana import TarikDanaTask
 from src.models.upload_payload import UploadPayload
 from src.models.identity import Identity
 from src.models.account import Account
-import time
 import os
 from pathlib import Path
 
@@ -46,13 +45,20 @@ async def run_cli(browser: IBrowser, account_repo: IAccountRepository):
                 for a in accounts:
                     active_text = "[green]Aktif[/]" if a.active else "[red]Nonaktif[/]"
                     status_color = "green" if a.status == "Berhasil Login" else "red" if "Gagal" in a.status else "yellow"
-                    notifier.console.print(f"ID: {a.id} | Email: {a.email} | Status: {active_text} | Info: [{status_color}]{a.status}[/]")
+                    profile = a.dolphin_profile_id or "-"
+                    notifier.console.print(f"ID: {a.id} | Email: {a.email} | Profil Dolphin: {profile} | Status: {active_text} | Info: [{status_color}]{a.status}[/]")
                 notifier.console.print("")
         elif choice == "Tambah Akun":
             email = await questionary.text("Email SoundOn:").ask_async()
             password = await questionary.password("Password:").ask_async()
-            new_id = int(time.time())
-            new_acc = Account(id=new_id, email=email, password=password, active=True, status="Baru Ditambahkan")
+            profile_id = await questionary.text("ID Profil Dolphin Anty (kosongkan jika pakai backend Chromium):").ask_async()
+            existing = account_repo.get_all()
+            new_id = (max((a.id for a in existing), default=0) + 1)
+            new_acc = Account(
+                id=new_id, email=email, password=password, active=True,
+                status="Baru Ditambahkan",
+                dolphin_profile_id=(profile_id.strip() or None) if profile_id else None,
+            )
             account_repo.save(new_acc)
             notifier.success(f"Akun {email} berhasil ditambahkan!")
         elif choice == "Hapus Akun":

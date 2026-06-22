@@ -1,7 +1,7 @@
 import asyncio
 from src.pages.base import BasePage
 from src.models.identity import Identity
-from src.tasks._base import _BASE
+from src.constants import BASE_URL as _BASE
 
 _MONTHS = [
     "January", "February", "March", "April", "May", "June",

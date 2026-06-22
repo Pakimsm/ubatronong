@@ -1,6 +1,6 @@
 import asyncio
 from src.pages.base import BasePage
-from src.tasks._base import _BASE
+from src.constants import BASE_URL as _BASE
 
 class WithdrawPage(BasePage):
     async def get_balance(self) -> str:

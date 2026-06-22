@@ -9,9 +9,7 @@ class TarikDataTask(SoundOnTask[TaskResult]):
 
     async def execute(self, page: IPage, account: Account) -> TaskResult:
         try:
-            from src.pages.login import LoginPage
-            login_page = LoginPage(page)
-            if not await login_page.login(account.email, account.password):
+            if not await self._login(page, account):
                 return TaskResult(success=False, message="Login gagal")
 
             library_page = LibraryPage(page)

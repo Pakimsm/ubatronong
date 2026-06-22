@@ -3,7 +3,6 @@ from src.models.account import Account
 from src.models.task_result import TaskResult
 from src.models.identity import Identity
 from src.tasks._base import SoundOnTask
-from src.pages.login import LoginPage
 from src.pages.profile import ProfilePage
 
 class VerifikasiAkunTask(SoundOnTask[TaskResult]):
@@ -14,8 +13,7 @@ class VerifikasiAkunTask(SoundOnTask[TaskResult]):
 
     async def execute(self, page: IPage, account: Account) -> TaskResult:
         try:
-            login_page = LoginPage(page)
-            if not await login_page.login(account.email, account.password):
+            if not await self._login(page, account):
                 return TaskResult(success=False, message="Login gagal")
 
             profile_page = ProfilePage(page)

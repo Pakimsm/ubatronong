@@ -1,6 +1,10 @@
 import asyncio
 from typing import Optional
 from src.interfaces.browser import IPage
+from src.core.logger import setup_logger
+
+logger = setup_logger("publish")
+
 
 class BasePage:
     def __init__(self, page: IPage):
@@ -52,44 +56,19 @@ class BasePage:
         await self.page.fill(selector, value)
 
     async def fill_react(self, selector: str, value: str) -> None:
-        """Fallback to raw keypresses if normal fill fails to trigger React onChange."""
+        """Ketik seperti manusia + picu event React onChange. Lewat kontrak IPage
+        (tanpa menyentuh objek Playwright konkret)."""
         await self.wait_for_element(selector)
-        el = self.page._page.locator(selector).first
-        await el.click(force=True)
-        
-        # Clear field safely
-        await el.fill("") 
-        
-        # Type slowly
-        await el.type(value, delay=50)
-        
-        # Dispatch React events securely by passing the element handle, NOT the string selector!
-        await el.evaluate('''el => {
-            el.dispatchEvent(new Event('input', { bubbles: true }));
-            el.dispatchEvent(new Event('change', { bubbles: true }));
-        }''')
+        await self.page.type_human(selector, value)
 
     async def select_semi(self, index: int, value: str) -> None:
-        """Interact with Semi UI dropdowns."""
-        selects = await self.page._page.query_selector_all(".semi-select")
-        if index >= len(selects):
-            raise IndexError(f"Cannot find semi-select at index {index}")
-        await selects[index].click()
-        await asyncio.sleep(0.8)
-        await self.page._page.evaluate(
-            """([val]) => {
-                const opt = [...document.querySelectorAll('.semi-select-option')]
-                    .find(el => el.innerText.trim() === val || el.innerText.trim().includes(val));
-                if (opt) opt.click();
-            }""",
-            [value],
-        )
-        await asyncio.sleep(0.3)
+        """Interact with Semi UI dropdowns lewat kontrak IPage."""
+        await self.page.dispatch_select_option(".semi-select", index, value)
 
     async def click_radio_option(self, label_text: str, option_text: str) -> bool:
         """Finds a form field by label_text (searching for the shortest containing leaf element), 
         traverses up its parent chain, and clicks the option containing option_text."""
-        print(f"Clicking radio/button option '{option_text}' for field '{label_text}'...")
+        logger.info(f"Clicking radio/button option '{option_text}' for field '{label_text}'...")
         try:
             success = await self.page.evaluate('''([lbl, opt]) => {
                 const elements = [...document.querySelectorAll("label, span, div, p, button")];
@@ -115,5 +94,5 @@ class BasePage:
             }''', [label_text, option_text])
             return bool(success)
         except Exception as e:
-            print(f"DEBUG: Error clicking radio/button option '{option_text}' for '{label_text}': {e}")
+            logger.debug(f"Error clicking radio/button option '{option_text}' for '{label_text}': {e}")
             return False
