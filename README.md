@@ -1,6 +1,6 @@
-# SoundOn Bot CLI
+# Sound(bot)On CLI
 
-SoundOn Bot CLI adalah aplikasi otomatisasi berbasis Python dan Playwright yang dirancang untuk mengelola rilis lagu di platform SoundOn Global secara massal. Bot ini membantu proses pembuatan draf lagu tunggal (Single Song), album, penarikan analitik, hingga manajemen multi-akun.
+Sound(bot)On CLI adalah aplikasi otomatisasi berbasis Python dan Playwright yang dirancang untuk mengelola rilis lagu. Bot ini membantu proses pembuatan draf lagu tunggal (Single Song), album, penarikan analitik, hingga manajemen multi-akun.
 
 ## Fitur Utama
 
